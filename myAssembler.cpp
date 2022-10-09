@@ -186,8 +186,8 @@ void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
     if (opcode == "beq")
     {
         op = "000100";
-        rt = convert_reg(vec.at(0));
-        rs = convert_reg(vec.at(1));
+        rt = convert_reg(vec.at(1));
+        rs = convert_reg(vec.at(0));
         label_branch = vec.at(2);
         label_branch.append(":");
         // into vec 3, you gotta insert string version of int length.
@@ -215,8 +215,8 @@ void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
     if (opcode == "bne")
     {
         op = "000101";
-        rt = convert_reg(vec.at(0));
-        rs = convert_reg(vec.at(1));
+        rt = convert_reg(vec.at(1));
+        rs = convert_reg(vec.at(0));
         label_branch = vec.at(2);
         label_branch.append(":");
         // into vec 3, you gotta insert string version of int length.
