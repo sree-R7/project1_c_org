@@ -185,7 +185,7 @@ void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
 
     if (opcode == "beq")
     {
-        op = "001000";
+        op = "000100";
         rt = convert_reg(vec.at(0));
         rs = convert_reg(vec.at(1));
         label_branch = vec.at(2);
@@ -205,6 +205,7 @@ void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
             diff = -((line_count - labelMap[label_branch])) - 1; // mips online
         }
         string to_imm = to_string(diff);
+        // cout << "beq:" << to_imm << endl;
         imm = convert_imm(to_imm);
         assembleTypeI(op, rs, rt, imm, myfile);
 
@@ -213,7 +214,7 @@ void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
 
     if (opcode == "bne")
     {
-        op = "001001";
+        op = "000101";
         rt = convert_reg(vec.at(0));
         rs = convert_reg(vec.at(1));
         label_branch = vec.at(2);
@@ -237,7 +238,7 @@ void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
 
         // cout << "bne diff:" << diff << endl;
     }
-    // line_count++;
+    line_count++;
     //  return;
 }
 
