@@ -10,6 +10,16 @@
 #include <iterator>
 #include <sstream>
 #include <bitset>
+#include <algorithm>
+#include <cctype>
+
+struct non_alpha
+{
+    bool operator()(char c)
+    {
+        return !std::isalpha(c);
+    }
+};
 
 //#include "myAssembler.h"
 
@@ -24,6 +34,7 @@ string convert_reg(string reg_name);
 
 unsigned int countBits(unsigned int n);
 string convert_imm(string imm_str);
+string convert_shamt(string shamt_string);
 
 void assembleTypeR(string op, string rs, string rt, string rd, string sh, string func, ofstream &myfile);
 
@@ -253,7 +264,7 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
         rd = convert_reg(vec.at(0)); // vec.at(0);
         rt = convert_reg(vec.at(2)); // vec.at(2);
         sh = "00000";
-        func = "100101"; // 0/27hex
+        func = "100101"; // 0/25hex
         if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL")
         {
             error_procedure(regular_line, opcode, vec, myfile);
@@ -273,6 +284,102 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
         sh = "00000";
         func = "001000"; // 0/08hex
         if (rs == "FAIL" || vec.size() > 1)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+    }
+    else if (opcode == "slt")
+    {
+        op = "000000";
+        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
+
+        rs = convert_reg(vec.at(1)); // vec.at(1);
+        rd = convert_reg(vec.at(0)); // vec.at(0);
+        rt = convert_reg(vec.at(2)); // vec.at(2);
+        sh = "00000";
+        func = "101010"; // 0/2a hex
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+    }
+
+    else if (opcode == "sltu")
+    {
+        op = "000000";
+        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
+
+        rs = convert_reg(vec.at(1)); // vec.at(1);
+        rd = convert_reg(vec.at(0)); // vec.at(0);
+        rt = convert_reg(vec.at(2)); // vec.at(2);
+        sh = "00000";
+        func = "101011"; // 0/2b hex
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+    }
+
+    else if (opcode == "sll")
+    {
+        op = "000000";
+
+        rs = "00000";                // vec.at(1);
+        rd = convert_reg(vec.at(0)); // vec.at(0);
+        rt = convert_reg(vec.at(1)); // vec.at(2);
+        sh = convert_shamt(vec.at(2));
+        func = "000000"; // 0/00 hex
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL" || sh == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+    }
+
+    else if (opcode == "srl")
+    {
+        op = "000000";
+
+        rs = "00000";                // vec.at(1);
+        rd = convert_reg(vec.at(0)); // vec.at(0);
+        rt = convert_reg(vec.at(1)); // vec.at(2);
+        sh = convert_shamt(vec.at(2));
+        func = "000010"; // 0/02 hex
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL" || sh == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+    }
+
+    else if (opcode == "subu")
+    {
+        op = "000000";
+
+        rs = convert_reg(vec.at(1)); // vec.at(1);
+        rd = convert_reg(vec.at(0)); // vec.at(0);
+        rt = convert_reg(vec.at(2)); // vec.at(2);
+        sh = "00000";
+        func = "100011"; // 0/23 hex
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL")
         {
             error_procedure(regular_line, opcode, vec, myfile);
         }
@@ -461,6 +568,19 @@ unsigned int countBits(unsigned int n)
         n >>= 1;
     }
     return count;
+}
+
+string convert_shamt(string shamt_string)
+{
+    bool contains_non_alpha = std::find_if(shamt_string.begin(), shamt_string.end(), non_alpha()) != shamt_string.end();
+    if (contains_non_alpha == false)
+    {
+        return "FAIL";
+    }
+    int imm_unex = stoi(shamt_string);
+    std::string binary = std::bitset<5>(imm_unex).to_string(); // to binary
+    // cout << "binary:" << binary << endl;
+    return binary;
 }
 
 string convert_reg(string reg_at) //
