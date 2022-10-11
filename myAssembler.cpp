@@ -19,7 +19,7 @@ void readlabel(string cline, ofstream &myfile);
 
 void readline(string cline, ofstream &myfile);
 void printline(string o, vector<string> passing);
-void compare_opcode(string opcode, vector<string> vec, ofstream &myfile);
+void compare_opcode(string regular_line, string opcode, vector<string> vec, ofstream &myfile);
 string convert_reg(string reg_name);
 
 unsigned int countBits(unsigned int n);
@@ -28,6 +28,8 @@ string convert_imm(string imm_str);
 void assembleTypeR(string op, string rs, string rt, string rd, string sh, string func, ofstream &myfile);
 
 void assembleTypeI(string op, string rs, string rt, string imm, ofstream &myfile);
+
+void error_procedure(string regular_line, string opcode, vector<string> vec, ofstream &myfile);
 
 map<string, int> labelMap;
 int label_line_count = 1; // we will increment this in readlabel
@@ -111,7 +113,7 @@ void readline(string regular_line, ofstream &myfile)
         cout << i << endl;*/
 
     // call function to convert opcode to hex bin here.
-    compare_opcode(opcode, vec, myfile);
+    compare_opcode(regular_line, opcode, vec, myfile);
 }
 
 void readlabel(string label_line, ofstream &myfile)
@@ -130,16 +132,20 @@ void readlabel(string label_line, ofstream &myfile)
     // cout << labelMap["L2:"] << endl;
 }
 
-// opcode-> add
-// vec.at(0) -> $t1
-// vect.at(1) -> $t2....
-
-void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
+void error_procedure(string regular_line, string opcode, vector<string> vec, ofstream &myfile)
+{
+    cout << "Cannot assemble " << regular_line << " at line " << line_count << endl;
+    // Not generating output file
+    myfile.close();
+    if (remove("myAssembler.obj"))
+        perror("removed file");
+}
+void compare_opcode(string regular_line, string opcode, vector<string> vec, ofstream &myfile)
 {
     string op, rs, rt, rd, sh, func, imm, imm_temp, label_branch;
 
-    // int imm_int = 0;
     string colon = ":";
+    string dollar = "$"; // use this to check ref isn't beijng passed to lw and sw.
 
     if (opcode == "add")
     {
@@ -151,9 +157,17 @@ void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
         rt = convert_reg(vec.at(2)); // vec.at(2);
         sh = "00000";
         func = "100000";
-        assembleTypeR(op, rs, rt, rd, sh, func, myfile);
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+        // return;
     }
-    if (opcode == "sub")
+    else if (opcode == "sub")
     {
         op = "000000";
         // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
@@ -163,34 +177,170 @@ void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
         rt = convert_reg(vec.at(2)); // vec.at(2);
         sh = "00000";
         func = "100010";
-        assembleTypeR(op, rs, rt, rd, sh, func, myfile);
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
     }
-    if (opcode == "lw") // rt, imm(rs)
+    else if (opcode == "addu")
+    {
+        op = "000000";
+        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
+
+        rs = convert_reg(vec.at(1)); // vec.at(1);
+        rd = convert_reg(vec.at(0)); // vec.at(0);
+        rt = convert_reg(vec.at(2)); // vec.at(2);
+        sh = "00000";
+        func = "100001"; // 0/21hex
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+    }
+
+    else if (opcode == "and")
+    {
+        op = "000000";
+        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
+
+        rs = convert_reg(vec.at(1)); // vec.at(1);
+        rd = convert_reg(vec.at(0)); // vec.at(0);
+        rt = convert_reg(vec.at(2)); // vec.at(2);
+        sh = "00000";
+        func = "100100"; // 0/24hex
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+    }
+    else if (opcode == "nor")
+    {
+        op = "000000";
+        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
+
+        rs = convert_reg(vec.at(1)); // vec.at(1);
+        rd = convert_reg(vec.at(0)); // vec.at(0);
+        rt = convert_reg(vec.at(2)); // vec.at(2);
+        sh = "00000";
+        func = "100111"; // 0/27hex
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+    }
+    else if (opcode == "or")
+    {
+        op = "000000";
+        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
+
+        rs = convert_reg(vec.at(1)); // vec.at(1);
+        rd = convert_reg(vec.at(0)); // vec.at(0);
+        rt = convert_reg(vec.at(2)); // vec.at(2);
+        sh = "00000";
+        func = "100101"; // 0/27hex
+        if (rs == "FAIL" || rd == "FAIL" || rt == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+    }
+
+    else if (opcode == "jr")
+    {
+        op = "000000";
+        rs = convert_reg(vec.at(0)); // vec.at(1);
+        rd = "00000";                // vec.at(0);
+        rt = "00000";                // vec.at(2);
+        sh = "00000";
+        func = "001000"; // 0/08hex
+        if (rs == "FAIL" || vec.size() > 1)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
+        }
+    }
+
+    else if (opcode == "lw") // rt, imm(rs)
     {
         // cout << "In " << opcode << "rt is:" << vec.at(0) << endl;
         //  cout << "In " << opcode << "imm is:" << vec.at(1) << endl;
         // cout << "In " << opcode << "rs is:" << vec.at(2) << endl;
+        if (vec.at(1).find(dollar) != string::npos)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
         op = "100011"; // 23 in Hex
         rt = convert_reg(vec.at(0));
         imm = convert_imm(vec.at(1));
         rs = convert_reg(vec.at(2));
-        assembleTypeI(op, rs, rt, imm, myfile);
+        if (rt == "FAIL" || rs == "FAIL" || imm == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+        // return;
     }
 
-    if (opcode.find(colon) != string::npos)
+    else if (opcode == "sw") // rt, imm(rs)
+    {
+        if (vec.at(1).find(dollar) != string::npos)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        op = "101011"; // 2b in Hex
+        rt = convert_reg(vec.at(0));
+        imm = convert_imm(vec.at(1));
+        rs = convert_reg(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL" || imm == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+        // return;
+    }
+
+    else if (opcode.find(colon) != string::npos)
     {
         line_count--;
-        // label_count++;
     }
 
-    if (opcode == "beq")
+    else if (opcode == "beq")
     {
         op = "000100";
         rt = convert_reg(vec.at(1));
         rs = convert_reg(vec.at(0));
         label_branch = vec.at(2);
         label_branch.append(":");
-        // into vec 3, you gotta insert string version of int length.
         // cout << "line of beq: " << line_count << endl;
 
         int diff = 0;
@@ -201,18 +351,16 @@ void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
         }
         else
         {
-            // diff = (labelMap[label_branch] - 1) - (line_count + 1); // yours
             diff = -((line_count - labelMap[label_branch])) - 1; // mips online
         }
         string to_imm = to_string(diff);
         // cout << "beq:" << to_imm << endl;
         imm = convert_imm(to_imm);
         assembleTypeI(op, rs, rt, imm, myfile);
-
-        // cout << "beq diff:" << diff << endl;
+        //  cout << "beq diff:" << diff << endl;
     }
 
-    if (opcode == "bne")
+    else if (opcode == "bne")
     {
         op = "000101";
         rt = convert_reg(vec.at(1));
@@ -235,8 +383,12 @@ void compare_opcode(string opcode, vector<string> vec, ofstream &myfile)
         string to_imm = to_string(diff);
         imm = convert_imm(to_imm);
         assembleTypeI(op, rs, rt, imm, myfile);
-
-        // cout << "bne diff:" << diff << endl;
+        // return;
+        //  cout << "bne diff:" << diff << endl;
+    }
+    else
+    {
+        error_procedure(regular_line, opcode, vec, myfile);
     }
     line_count++;
     //  return;
@@ -275,9 +427,14 @@ void assembleTypeI(string op, string rs, string rt, string imm, ofstream &myfile
 string convert_imm(string imm_str)
 {
     // need to sign extend imm_str
+
     int imm_unex = stoi(imm_str);
-    // convert dec to binary
-    // cout << "imm_unex: " << imm_unex << endl;
+
+    /*if (imm_unex % 4 != 0)
+    {
+        return "FAIL";
+    }*/
+
     string binary_imm = bitset<16>(imm_unex).to_string();
 
     /*
@@ -315,131 +472,135 @@ string convert_reg(string reg_at) //
     {
         reg_num_binary = "01000"; // 8
     }
-    if (reg_at == "$t1")
+    else if (reg_at == "$t1")
     {
         reg_num_binary = "01001"; // 9
     }
-    if (reg_at == "$t2")
+    else if (reg_at == "$t2")
     {
         reg_num_binary = "01010"; // 10
     }
-    if (reg_at == "$t3")
+    else if (reg_at == "$t3")
     {
         reg_num_binary = "01011"; // 11
     }
-    if (reg_at == "$t4")
+    else if (reg_at == "$t4")
     {
         reg_num_binary = "01100"; // 12
     }
-    if (reg_at == "$t5")
+    else if (reg_at == "$t5")
     {
         reg_num_binary = "01011"; // 13
     }
-    if (reg_at == "$t6")
+    else if (reg_at == "$t6")
     {
         reg_num_binary = "01110"; // 14
     }
-    if (reg_at == "$t7")
+    else if (reg_at == "$t7")
     {
         reg_num_binary = "01111"; // 15
     }
-    if (reg_at == "$t8")
+    else if (reg_at == "$t8")
     {
         reg_num_binary = "11000"; // 24
     }
-    if (reg_at == "$t9")
+    else if (reg_at == "$t9")
     {
         reg_num_binary = "11001"; // 25
     }
 
     ////////$zero
-    if (reg_at == "$zero" || reg_at == "$0")
+    else if (reg_at == "$zero" || reg_at == "$0")
     {
         reg_num_binary = "00000"; // 0
     }
     //////// $at
-    if (reg_at == "$at")
+    else if (reg_at == "$at")
     {
         reg_num_binary = "00001"; // 1
     }
     //////// v0-v1
-    if (reg_at == "$v0")
+    else if (reg_at == "$v0")
     {
         reg_num_binary = "00010"; // 2
     }
-    if (reg_at == "$v1")
+    else if (reg_at == "$v1")
     {
         reg_num_binary = "00011"; // 3
     }
     //////// a0-a3
-    if (reg_at == "$a0")
+    else if (reg_at == "$a0")
     {
         reg_num_binary = "00100"; // 4
     }
-    if (reg_at == "$a1")
+    else if (reg_at == "$a1")
     {
         reg_num_binary = "00101"; // 5
     }
-    if (reg_at == "$a2")
+    else if (reg_at == "$a2")
     {
         reg_num_binary = "00110"; // 6
     }
-    if (reg_at == "$a3")
+    else if (reg_at == "$a3")
     {
         reg_num_binary = "00111"; // 7
     }
     ///////// s0- s7
-    if (reg_at == "$s0")
+    else if (reg_at == "$s0")
     {
         reg_num_binary = "10000"; // 16
     }
-    if (reg_at == "$s1")
+    else if (reg_at == "$s1")
     {
         reg_num_binary = "10001"; // 17
     }
-    if (reg_at == "$s2")
+    else if (reg_at == "$s2")
     {
         reg_num_binary = "10010"; // 18
     }
-    if (reg_at == "$s3")
+    else if (reg_at == "$s3")
     {
         reg_num_binary = "10011"; // 19
     }
-    if (reg_at == "$s4")
+    else if (reg_at == "$s4")
     {
         reg_num_binary = "10100"; // 20
     }
-    if (reg_at == "$s5")
+    else if (reg_at == "$s5")
     {
         reg_num_binary = "10101"; // 21
     }
-    if (reg_at == "$s6")
+    else if (reg_at == "$s6")
     {
         reg_num_binary = "10110"; // 22
     }
-    if (reg_at == "$s7")
+    else if (reg_at == "$s7")
     {
         reg_num_binary = "10111"; // 23
     }
 
     ////// $gp
-    if (reg_at == "$gp")
+    else if (reg_at == "$gp")
     {
         reg_num_binary = "11100"; // 28
     }
 
     ///// sp, fp, ra,
-    if (reg_at == "$sp")
+    else if (reg_at == "$sp")
     {
         reg_num_binary = "11101"; // 29
     }
-    if (reg_at == "$fp")
+    else if (reg_at == "$fp")
     {
         reg_num_binary = "11110"; // 30
     }
-    if (reg_at == "$ra")
+    else if (reg_at == "$ra")
     {
         reg_num_binary = "11111"; // 31
+    }
+    else
+    {
+        return "FAIL";
     }
 
     return reg_num_binary;
