@@ -13,16 +13,6 @@
 #include <algorithm>
 #include <cctype>
 
-struct non_alpha
-{
-    bool operator()(char c)
-    {
-        return !std::isalpha(c);
-    }
-};
-
-//#include "myAssembler.h"
-
 using namespace std;
 
 void readlabel(string cline, ofstream &myfile);
@@ -43,9 +33,11 @@ void assembleTypeI(string op, string rs, string rt, string imm, ofstream &myfile
 void error_procedure(string regular_line, string opcode, vector<string> vec, ofstream &myfile);
 
 map<string, int> labelMap;
-int label_line_count = 1; // we will increment this in readlabel
-int line_count = 1;       // this will increment in realine
-int label_count = 0;      // count number of labels
+int label_line_count = 1; // we will increment this in readlabel. in the first pass. set to one because .s files are 1 based.
+int label_count = 0;      // count number of labels. for first pass.
+
+int line_count = 1; // this will increment in readline. second pass.
+
 int main(int argc, char *argv[])
 {
 
@@ -58,7 +50,6 @@ int main(int argc, char *argv[])
     myfile.open("myAssembler.obj", ios::trunc); // If file is opened for output operations then previous content is deleted and replaced by the new one.
 
     string filename = argv[1];
-    // cout << "filename:" << filename << endl;
 
     ifstream file;
     file.open(filename);
@@ -71,6 +62,7 @@ int main(int argc, char *argv[])
     else
     {
 
+        // first pass for labels only
         string lab;
         while (getline(file, lab))
         {
@@ -114,43 +106,39 @@ void readline(string regular_line, ofstream &myfile)
     vector<string> vec;  // vec holds everything but opcode
     while (pch != NULL)
     {
-
         vec.push_back(pch);
         pch = strtok(NULL, " , ( )");
     }
     vec.erase(vec.begin()); // removing opcode from vec
-    /*cout << "opcode:" << opcode << endl;
-    for (auto i : vec)
-        cout << i << endl;*/
 
     // call function to convert opcode to hex bin here.
     compare_opcode(regular_line, opcode, vec, myfile);
 }
 
+// FIRST PASS only reading labels. and creating a label map.
 void readlabel(string label_line, ofstream &myfile)
 {
     string labels = label_line;
     string delimit = ":";
 
-    if (labels.find(delimit) != string::npos)
+    if (labels.find(delimit) != string::npos) // if label encountered
     {
-        label_count++;
-        labelMap[labels] = label_line_count + 1 - label_count;
+        label_count++;                                         // increment label count.
+        labelMap[labels] = label_line_count + 1 - label_count; //<label name, label location>
     }
-    label_line_count++;
-
-    // cout << labelMap["L1:"] << endl;
-    // cout << labelMap["L2:"] << endl;
+    label_line_count++; // increments everytime regardless of label or not.
 }
-
+// function to generate error message at line number and delete output file if it already existed.
 void error_procedure(string regular_line, string opcode, vector<string> vec, ofstream &myfile)
 {
-    cout << "Cannot assemble " << regular_line << " at line " << line_count << endl;
+    cout << "Cannot assemble " << regular_line << " at line " << line_count + label_count << endl;
     // Not generating output file
     myfile.close();
     if (remove("myAssembler.obj"))
         perror("removed file");
 }
+
+// main instruction assembler function. looks at opcode, determines which type of instruction it is.
 void compare_opcode(string regular_line, string opcode, vector<string> vec, ofstream &myfile)
 {
     string op, rs, rt, rd, sh, func, imm, imm_temp, label_branch;
@@ -158,11 +146,16 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
     string colon = ":";
     string dollar = "$"; // use this to check ref isn't beijng passed to lw and sw.
 
+    if ((opcode != "lui" && vec.size() == 2) || (opcode != "jr" && vec.size() == 1) || vec.size() > 3)
+    {
+        error_procedure(regular_line, opcode, vec, myfile);
+        line_count++;
+        return;
+    }
+
     if (opcode == "add")
     {
         op = "000000";
-        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
-
         rs = convert_reg(vec.at(1)); // vec.at(1);
         rd = convert_reg(vec.at(0)); // vec.at(0);
         rt = convert_reg(vec.at(2)); // vec.at(2);
@@ -176,13 +169,10 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
         {
             assembleTypeR(op, rs, rt, rd, sh, func, myfile); // converting to HEX.
         }
-        // return;
     }
     else if (opcode == "sub")
     {
         op = "000000";
-        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
-
         rs = convert_reg(vec.at(1)); // vec.at(1);
         rd = convert_reg(vec.at(0)); // vec.at(0);
         rt = convert_reg(vec.at(2)); // vec.at(2);
@@ -200,8 +190,6 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
     else if (opcode == "addu")
     {
         op = "000000";
-        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
-
         rs = convert_reg(vec.at(1)); // vec.at(1);
         rd = convert_reg(vec.at(0)); // vec.at(0);
         rt = convert_reg(vec.at(2)); // vec.at(2);
@@ -220,8 +208,6 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
     else if (opcode == "and")
     {
         op = "000000";
-        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
-
         rs = convert_reg(vec.at(1)); // vec.at(1);
         rd = convert_reg(vec.at(0)); // vec.at(0);
         rt = convert_reg(vec.at(2)); // vec.at(2);
@@ -239,8 +225,6 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
     else if (opcode == "nor")
     {
         op = "000000";
-        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
-
         rs = convert_reg(vec.at(1)); // vec.at(1);
         rd = convert_reg(vec.at(0)); // vec.at(0);
         rt = convert_reg(vec.at(2)); // vec.at(2);
@@ -258,8 +242,6 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
     else if (opcode == "or")
     {
         op = "000000";
-        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
-
         rs = convert_reg(vec.at(1)); // vec.at(1);
         rd = convert_reg(vec.at(0)); // vec.at(0);
         rt = convert_reg(vec.at(2)); // vec.at(2);
@@ -295,8 +277,6 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
     else if (opcode == "slt")
     {
         op = "000000";
-        // cout << "In " << opcode << "rs is:" << vec.at(1) << endl;
-
         rs = convert_reg(vec.at(1)); // vec.at(1);
         rd = convert_reg(vec.at(0)); // vec.at(0);
         rt = convert_reg(vec.at(2)); // vec.at(2);
@@ -391,10 +371,8 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
 
     else if (opcode == "lw") // rt, imm(rs)
     {
-        // cout << "In " << opcode << "rt is:" << vec.at(0) << endl;
-        //  cout << "In " << opcode << "imm is:" << vec.at(1) << endl;
-        // cout << "In " << opcode << "rs is:" << vec.at(2) << endl;
-        if (vec.at(1).find(dollar) != string::npos)
+        bool contains_non_num = vec.at(1).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
         {
             error_procedure(regular_line, opcode, vec, myfile);
             return;
@@ -411,12 +389,12 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
         {
             assembleTypeI(op, rs, rt, imm, myfile);
         }
-        // return;
     }
 
     else if (opcode == "sw") // rt, imm(rs)
     {
-        if (vec.at(1).find(dollar) != string::npos)
+        bool contains_non_num = vec.at(1).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
         {
             error_procedure(regular_line, opcode, vec, myfile);
             return;
@@ -433,9 +411,299 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
         {
             assembleTypeI(op, rs, rt, imm, myfile);
         }
-        // return;
     }
 
+    else if (opcode == "lbu") // rt, imm(rs)
+    {
+        bool contains_non_num = vec.at(1).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        op = "100100"; // 24 in Hex
+        rt = convert_reg(vec.at(0));
+        imm = convert_imm(vec.at(1));
+        rs = convert_reg(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL" || imm == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+
+    else if (opcode == "lhu") // rt, imm(rs)
+    {
+        bool contains_non_num = vec.at(1).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        op = "100101"; // 25 in Hex
+        rt = convert_reg(vec.at(0));
+        imm = convert_imm(vec.at(1));
+        rs = convert_reg(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL" || imm == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+
+    else if (opcode == "ll") // rt, imm(rs)
+    {
+        bool contains_non_num = vec.at(1).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        op = "110000"; // 30 in Hex
+        rt = convert_reg(vec.at(0));
+        imm = convert_imm(vec.at(1));
+        rs = convert_reg(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL" || imm == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+
+    else if (opcode == "lui") // rt, imm
+    {
+        bool contains_non_num = vec.at(1).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        op = "001111"; // f in Hex
+        rt = convert_reg(vec.at(0));
+        imm = convert_imm(vec.at(1));
+        rs = "00000";
+        if (rt == "FAIL" || rs == "FAIL" || imm == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+
+    else if (opcode == "ori") // rt, rs, imm
+    {
+        op = "001101"; // 8 in Hex
+        rt = convert_reg(vec.at(0));
+        rs = convert_reg(vec.at(1));
+
+        bool contains_non_num = vec.at(2).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        imm = convert_imm(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+
+    else if (opcode == "slti") // rt, rs, imm
+    {
+        op = "001010"; // a in Hex
+        rt = convert_reg(vec.at(0));
+        rs = convert_reg(vec.at(1));
+
+        bool contains_non_num = vec.at(2).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        imm = convert_imm(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+    else if (opcode == "sltiu") // rt, rs, imm
+    {
+        op = "001011"; // b in Hex
+        rt = convert_reg(vec.at(0));
+        rs = convert_reg(vec.at(1));
+
+        bool contains_non_num = vec.at(2).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        imm = convert_imm(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+
+    else if (opcode == "addi") // rt, imm(rs)
+    {
+        op = "001000"; // 8 in Hex
+        rt = convert_reg(vec.at(0));
+        rs = convert_reg(vec.at(1));
+
+        bool contains_non_num = vec.at(2).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        imm = convert_imm(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+    else if (opcode == "addiu") // rt, imm(rs)
+    {
+        op = "001001"; // 9 in Hex
+        rt = convert_reg(vec.at(0));
+        rs = convert_reg(vec.at(1));
+
+        bool contains_non_num = vec.at(2).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        imm = convert_imm(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+    else if (opcode == "andi") // rt, imm(rs)
+    {
+        op = "001100"; // c in Hex
+        rt = convert_reg(vec.at(0));
+        rs = convert_reg(vec.at(1));
+
+        bool contains_non_num = vec.at(2).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        imm = convert_imm(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+    else if (opcode == "sb") // rt, imm(rs)
+    {
+        op = "101000"; // 28 in Hex
+        rt = convert_reg(vec.at(0));
+        rs = convert_reg(vec.at(1));
+
+        bool contains_non_num = vec.at(2).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        imm = convert_imm(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+    else if (opcode == "sc") // rt, imm(rs)
+    {
+        op = "111000"; // 38 in Hex
+        rt = convert_reg(vec.at(0));
+        rs = convert_reg(vec.at(1));
+
+        bool contains_non_num = vec.at(2).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        imm = convert_imm(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+    else if (opcode == "sh") // rt, imm(rs)
+    {
+        op = "101001"; // 29 in Hex
+        rt = convert_reg(vec.at(0));
+        rs = convert_reg(vec.at(1));
+
+        // ensure that only valid numbers are in imm field
+        bool contains_non_num = vec.at(2).find_first_not_of("-1234567890") != std::string::npos;
+        if (contains_non_num == true)
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+            return;
+        }
+        imm = convert_imm(vec.at(2));
+        if (rt == "FAIL" || rs == "FAIL")
+        {
+            error_procedure(regular_line, opcode, vec, myfile);
+        }
+        else
+        {
+            assembleTypeI(op, rs, rt, imm, myfile);
+        }
+    }
+
+    // if you encounter a label, decrement linecounter because in obj file there are no labels
     else if (opcode.find(colon) != string::npos)
     {
         line_count--;
@@ -448,9 +716,12 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
         rs = convert_reg(vec.at(0));
         label_branch = vec.at(2);
         label_branch.append(":");
-        // cout << "line of beq: " << line_count << endl;
 
         int diff = 0;
+
+        // checking to see if beq's Label even makes sense
+        if (labelMap.count(label_branch) == 0)
+            error_procedure(regular_line, opcode, vec, myfile);
 
         if (labelMap[label_branch] > line_count) // if we are skipping instructions ie: label to jump to is later...
         {
@@ -461,10 +732,8 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
             diff = -((line_count - labelMap[label_branch])) - 1; // mips online
         }
         string to_imm = to_string(diff);
-        // cout << "beq:" << to_imm << endl;
         imm = convert_imm(to_imm);
         assembleTypeI(op, rs, rt, imm, myfile);
-        //  cout << "beq diff:" << diff << endl;
     }
 
     else if (opcode == "bne")
@@ -474,8 +743,10 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
         rs = convert_reg(vec.at(0));
         label_branch = vec.at(2);
         label_branch.append(":");
-        // into vec 3, you gotta insert string version of int length.
-        // cout << "line of beq: " << line_count << endl;
+
+        // checking to see if bne's Label even makes sense
+        if (labelMap.count(label_branch) == 0)
+            error_procedure(regular_line, opcode, vec, myfile);
 
         int diff = 0;
 
@@ -490,17 +761,15 @@ void compare_opcode(string regular_line, string opcode, vector<string> vec, ofst
         string to_imm = to_string(diff);
         imm = convert_imm(to_imm);
         assembleTypeI(op, rs, rt, imm, myfile);
-        // return;
-        //  cout << "bne diff:" << diff << endl;
     }
     else
     {
+        // this error checking is for when only opcode is present but doesnot match any of the ones in if statements
         error_procedure(regular_line, opcode, vec, myfile);
     }
     line_count++;
-    //  return;
 }
-
+// assembles hex instrction according to type R format
 void assembleTypeR(string op, string rs, string rt, string rd, string sh, string func, ofstream &myfile)
 {
     // concatenate op rs rt rd sh func
@@ -512,11 +781,11 @@ void assembleTypeR(string op, string rs, string rt, string rd, string sh, string
     conc.append(sh);
     conc.append(func);
     bitset<32> set(conc);
-    // cout << "conc:" << conc << endl;
 
     myfile << std::setw(8) << std::setfill('0') << hex << set.to_ulong() << endl;
 }
 
+// assembles hex instrction according to type i format
 void assembleTypeI(string op, string rs, string rt, string imm, ofstream &myfile)
 {
     // concatenate op rs rt rd sh func
@@ -526,39 +795,36 @@ void assembleTypeI(string op, string rs, string rt, string imm, ofstream &myfile
     conc.append(rt);
     conc.append(imm);
     bitset<32> set(conc);
-    // cout << "conc:" << conc << endl;
 
     myfile << std::setw(8) << std::setfill('0') << hex << set.to_ulong() << endl;
 }
 
+// converts immediate value which is represented in string to binary. also implements sign extension
 string convert_imm(string imm_str)
 {
-    // need to sign extend imm_str
 
     int imm_unex = stoi(imm_str);
-
-    /*if (imm_unex % 4 != 0)
+    if (imm_str[0] == '-')
     {
-        return "FAIL";
-    }*/
+        // cout << "-ve" << endl;
+        // imm_unex = imm_unex * -1;
+        unsigned b = countBits(imm_unex); // number of bits representing the number in x
 
+        int r;                 // resulting sign-extended number
+        int m = 1U << (b - 1); // mask can be pre-computed if b is fixed
+
+        // x = x & ((1U << b) - 1); // (Skip this if bits in x above position b are already zero.)
+        r = (imm_unex ^ m) - m;
+        std::string binary = std::bitset<16>(imm_unex).to_string(); // to binary
+        // cout << "binary:" << binary << endl;
+        return binary;
+    }
     string binary_imm = bitset<16>(imm_unex).to_string();
-
-    /*
-    AUX stuff , might need later to sign extend
-    unsigned b = countBits(imm_unex); // number of bits representing the number in x
-
-    int r;                 // resulting sign-extended number
-    int m = 1U << (b - 1); // mask can be pre-computed if b is fixed
-
-    // x = x & ((1U << b) - 1); // (Skip this if bits in x above position b are already zero.)
-    r = (imm_unex ^ m) - m;*/
-
     std::string binary = std::bitset<16>(imm_unex).to_string(); // to binary
     // cout << "binary:" << binary << endl;
     return binary;
 }
-
+// counts number of bits. used for sign extension
 unsigned int countBits(unsigned int n)
 {
     unsigned int count = 0;
@@ -569,11 +835,11 @@ unsigned int countBits(unsigned int n)
     }
     return count;
 }
-
+// converts shift amount integer which is represented as string to binary
 string convert_shamt(string shamt_string)
 {
-    bool contains_non_alpha = std::find_if(shamt_string.begin(), shamt_string.end(), non_alpha()) != shamt_string.end();
-    if (contains_non_alpha == false)
+    bool contains_non_num = shamt_string.find_first_not_of("1234567890") != std::string::npos;
+    if (contains_non_num == true)
     {
         return "FAIL";
     }
@@ -582,7 +848,7 @@ string convert_shamt(string shamt_string)
     // cout << "binary:" << binary << endl;
     return binary;
 }
-
+// creturns appropriate binary for register
 string convert_reg(string reg_at) //
 {
     string reg_num_binary;
@@ -628,7 +894,6 @@ string convert_reg(string reg_at) //
     {
         reg_num_binary = "11001"; // 25
     }
-
     ////////$zero
     else if (reg_at == "$zero" || reg_at == "$0")
     {
@@ -698,13 +963,11 @@ string convert_reg(string reg_at) //
     {
         reg_num_binary = "10111"; // 23
     }
-
     ////// $gp
     else if (reg_at == "$gp")
     {
         reg_num_binary = "11100"; // 28
     }
-
     ///// sp, fp, ra,
     else if (reg_at == "$sp")
     {
